@@ -8,7 +8,8 @@
 local w = ECS() -- create a new world
 
 
--- all components MUST be defined BEFORE any entities are created
+-- all components MUST be defined BEFORE any entities are created.
+-- (AND before any etypes are defined!)
 w:defineComponent("myComp")
 
 
@@ -62,7 +63,7 @@ end)
 drawView:forEveryErchetype(function(erch)
     -- This will be called for every erchetype that this `view` contains.
     -- It applies for all current erchetypes, 
-    -- AND will be called for erchetypes created in the future too.
+    -- AND will be called for erchetypes lazily-created in the future too.
     print("erchetype was added!", erch)
 end)
 
@@ -100,6 +101,19 @@ w:flush()
 
 ```
 
+
+----
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+----
+
+
 # What about smart ev-buses? And erchetypes?
 ```lua
 
@@ -114,6 +128,10 @@ local function defineSmartEvent()
     local erchToFunctions = {--[[
         [erch] -> {func1, func2, func3...}
     ]]}
+
+    -- functions that apply for EVERY erchetype
+    local globalFunctions = {}
+
     local function call(ent, ...)
         local erch = ent:getErchetype()
         local funcs = erchToFunctions[erch]
@@ -124,15 +142,26 @@ local function defineSmartEvent()
         end
     end
 
-    local function on(comps, func)
+    local function smartOn(comps, func)
         onTc(comps, func)
+
+        if #comps == 0 then
+            table.insert(globalFunctions, func)
+            return
+        end
+
         local view = w:view(comps)
         view:forEveryErchetype(function(erch)
             local arr = erchToFunctions[erch] or {}
             table.insert(arr, func)
         end)
     end
+
+    return call, smartOn
 end
+
+
+local call, smartOn = defineSmartEvent()
 
 
 ```
