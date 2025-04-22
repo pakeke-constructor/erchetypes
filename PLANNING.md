@@ -140,6 +140,9 @@ local function defineSmartEvent()
                 f(ent, ...)
             end
         end
+        for _, f in ipairs(globalFunctions) do
+            f(ent, ...)
+        end
     end
 
     local function smartOn(comps, func)
@@ -151,9 +154,9 @@ local function defineSmartEvent()
         end
 
         local view = w:view(comps)
-        view:forEveryErchetype(function(erch)
-            local arr = erchToFunctions[erch] or {}
-            table.insert(arr, func)
+        view:foreachErchetype(function(erch)
+            erchToFunctions[erch] = erchToFunctions[erch] or {}
+            table.insert(erchToFunctions[erch], func)
         end)
     end
 
