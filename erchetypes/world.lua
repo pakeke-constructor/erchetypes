@@ -115,13 +115,13 @@ end
 
 
 ---@param ecs erchetypes.ECS
----@param components string[]
+---@param schset SchemaSet.Set
 ---@return erchetypes.Erchetype
-function newErchetype(ecs, components)
+function newErchetype(ecs, schset)
     local self = setmetatable({}, Erchetype_mt)
 
-    self.schset = ecs.schema:newSet(components)
-    self.components = components
+    self.schset = schset
+    self.components = schset:getElements()
     self.ecs = ecs
 
     -- forwardGraph and backGraph is basically just a big graph of
@@ -141,6 +141,7 @@ function newErchetype(ecs, components)
         tryUpdateErchetypeEdge(self, erch)
     end
 
+    ecs.keyToErch[schset:getKey()] = self
     return self
 end
 
@@ -156,15 +157,21 @@ function Erchetype:forward(comp)
         return self.forwardGraph[comp]
     end
 
-    local erch = newErchetype(self.ecs, {comp})
-    error("todo")
+    local newSchset = self.schset:add(comp)
+    return newErchetype(self.ecs, newSchset)
 end
+
 
 ---Walks backwards across the erchetype graph
 ---@param comp string
 ---@return erchetypes.Erchetype
 function Erchetype:back(comp)
-    return self
+    if self.forwardGraph[comp] then
+        return self.forwardGraph[comp]
+    end
+
+    local newSchset = self.schset:remove(comp)
+    return newErchetype(self.ecs, newSchset)
 end
 
 ---Walks backwards across the erchetype graph
@@ -180,14 +187,16 @@ end
 
 ---@param self erchetypes.ECS
 ---@param schset SchemaSet.Set
-local function getOrMakeErchetype(self, schset)
+---@return erchetypes.Erchetype
+local function getOrNewErchetype(self, schset)
     local k = schset:getKey()
     if self.keyToErch[k] then
         return self.keyToErch[k]
     end
 
     -- make new:
-    local erch = Erchetype()
+    local erch = Erchetype(self, schset)
+    return erch
 end
 
 
@@ -197,7 +206,7 @@ function ECS:defineEntityType(etype)
         assertValidComp(self, comp)
         table.insert(comps)
     end
-    local set = self.schema:newSet(comps)
+    local schset = self.schema:newSet(comps)
 end
 
 
